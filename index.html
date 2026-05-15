@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas LMS Breach — Security Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #c0392b;
+    --red-dim: #7b1f16;
+    --red-bg: #1a0a08;
+    --amber: #d4821a;
+    --amber-dim: #8a5010;
+    --green: #2e7d52;
+    --green-dim: #1a4a30;
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.15);
+    --text: #e8e4de;
+    --text-muted: #888;
+    --text-dim: #555;
+    --mono: 'DM Mono', monospace;
+    --serif: 'Instrument Serif', serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 3rem;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(192,57,43,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(192,57,43,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .hero-glow {
+    position: absolute;
+    top: -200px;
+    right: -200px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(192,57,43,0.12) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  .hero-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease forwards 0.1s;
+  }
+
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: clamp(3rem, 8vw, 7rem);
+    line-height: 0.95;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    opacity: 0;
+    animation: fadeUp 0.7s ease forwards 0.2s;
+    max-width: 900px;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--red);
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2.5rem;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp 0.7s ease forwards 0.4s;
+  }
+
+  .hero-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .hero-meta-item .val {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .hero-meta-item .lbl {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .hero-scroll {
+    position: absolute;
+    bottom: 2rem;
+    right: 3rem;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    opacity: 0;
+    animation: fadeUp 0.7s ease forwards 0.8s;
+  }
+
+  /* NAV */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(13,13,13,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 3rem;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+
+  nav a {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 1rem 1.25rem;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  nav a:hover { color: var(--text); border-color: var(--red); }
+
+  /* SECTIONS */
+  .section {
+    padding: 4rem 3rem;
+    border-bottom: 1px solid var(--border);
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-full {
+    padding: 4rem 3rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-full > * { max-width: 1200px; margin-left: auto; margin-right: auto; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 1.25rem;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: clamp(1.8rem, 3vw, 2.8rem);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  p { color: #b0aba4; line-height: 1.75; margin-bottom: 1rem; }
+  p:last-child { margin-bottom: 0; }
+
+  /* TIMELINE */
+  .timeline {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 0;
+    position: relative;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 119px;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--red), var(--border));
+  }
+
+  .tl-date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 2px 1.5rem 2rem 0;
+    text-align: right;
+    line-height: 1.4;
+  }
+
+  .tl-body {
+    padding: 0 0 2rem 1.5rem;
+    position: relative;
+  }
+
+  .tl-body::before {
+    content: '';
+    position: absolute;
+    left: -4.5px;
+    top: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+    box-shadow: 0 0 12px rgba(192,57,43,0.6);
+  }
+
+  .tl-body.ok::before { background: #2e7d52; box-shadow: 0 0 12px rgba(46,125,82,0.5); }
+  .tl-body.warn::before { background: var(--amber); box-shadow: 0 0 12px rgba(212,130,26,0.5); }
+
+  .tl-body strong {
+    display: block;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .tl-body p { font-size: 13px; margin-bottom: 0; color: var(--text-muted); }
+
+  /* FRAMEWORK CARDS */
+  .fw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+
+  .fw-card {
+    background: var(--surface);
+    padding: 1.5rem;
+    transition: background 0.2s;
+  }
+
+  .fw-card:hover { background: var(--surface2); }
+
+  .fw-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    border-radius: 2px;
+    margin-bottom: 0.75rem;
+  }
+
+  .tag-red { background: rgba(192,57,43,0.15); color: var(--red); border: 1px solid rgba(192,57,43,0.3); }
+  .tag-amber { background: rgba(212,130,26,0.12); color: var(--amber); border: 1px solid rgba(212,130,26,0.25); }
+  .tag-blue { background: rgba(52,120,200,0.1); color: #6aabf0; border: 1px solid rgba(52,120,200,0.25); }
+
+  .fw-card h3 { font-size: 14px; font-weight: 500; color: var(--text); text-transform: none; letter-spacing: 0; margin-bottom: 0.5rem; }
+  .fw-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 0; line-height: 1.6; }
+
+  /* IMPACT */
+  .impact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+
+  @media (max-width: 700px) {
+    .impact-grid { grid-template-columns: 1fr; }
+    .hero { padding: 2rem; }
+    .section, .section-full { padding: 3rem 1.5rem; }
+    nav { padding: 0 1.5rem; }
+    .timeline { grid-template-columns: 90px 1fr; }
+    .timeline::before { left: 89px; }
+    .hero-scroll { display: none; }
+  }
+
+  .impact-card {
+    background: var(--surface);
+    padding: 2rem 1.5rem;
+  }
+
+  .impact-icon {
+    font-size: 24px;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .impact-card h3 { font-size: 13px; color: var(--text-muted); margin-bottom: 0.75rem; }
+  .impact-card p { font-size: 13px; color: #888; line-height: 1.65; margin-bottom: 0; }
+
+  /* REMEDIATIONS */
+  .rem-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+
+  .rem-item {
+    background: var(--surface);
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 0;
+    transition: background 0.2s;
+  }
+
+  .rem-item:hover { background: var(--surface2); }
+
+  .rem-num-col {
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 20px;
+    color: var(--text-dim);
+    padding: 1.5rem;
+  }
+
+  .rem-body { padding: 1.5rem; }
+  .rem-body h3 { font-size: 14px; font-weight: 500; color: var(--text); text-transform: none; letter-spacing: 0; margin-bottom: 4px; }
+  .rem-body p { font-size: 13px; color: var(--text-muted); margin-bottom: 0; line-height: 1.6; }
+
+  .rem-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 2px 6px;
+    border-radius: 2px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .badge-short { background: rgba(212,130,26,0.1); color: var(--amber); border: 1px solid rgba(212,130,26,0.2); }
+  .badge-long { background: rgba(52,120,200,0.08); color: #6aabf0; border: 1px solid rgba(52,120,200,0.2); }
+
+  /* EXIT TICKET */
+  .exit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 3rem; }
+
+  .exit-card { background: var(--surface); padding: 1.5rem; }
+  .exit-q { font-family: var(--mono); font-size: 10px; color: var(--red); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.75rem; }
+  .exit-card p { font-size: 13px; color: #999; line-height: 1.65; margin-bottom: 0; }
+
+  /* REFLECTION */
+  .reflection-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    padding: 2rem;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .reflection-box p { font-family: var(--serif); font-size: 1.05rem; line-height: 1.8; font-style: italic; color: #a09990; margin-bottom: 0; }
+
+  /* SOURCES */
+  .sources-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .sources-list li { font-family: var(--mono); font-size: 12px; color: var(--text-dim); display: flex; gap: 12px; }
+  .sources-list li::before { content: '—'; color: var(--red); flex-shrink: 0; }
+  .sources-list li a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .sources-list li a:hover { color: var(--text); }
+
+  /* ETHICS */
+  .ethics-callout {
+    background: linear-gradient(135deg, rgba(192,57,43,0.04), rgba(13,13,13,0));
+    border: 1px solid rgba(192,57,43,0.2);
+    border-radius: 4px;
+    padding: 2rem;
+  }
+
+  /* FOOTER */
+  footer {
+    padding: 2rem 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  footer span { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* ATTACK VECTOR */
+  .vector-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+  @media (max-width: 700px) { .vector-layout { grid-template-columns: 1fr; gap: 2rem; } }
+
+  .attack-chain {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .chain-step {
+    display: flex;
+    gap: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .chain-step:last-child { border-bottom: none; }
+
+  .chain-n {
+    width: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--red);
+    border-right: 1px solid var(--border);
+    padding: 1rem 0;
+  }
+
+  .chain-text {
+    padding: 0.75rem 1rem;
+  }
+
+  .chain-text strong { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .chain-text span { font-size: 12px; color: var(--text-muted); line-height: 1.5; display: block; }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-label">Security Incident Brief · May 2026 · Ethical Hacking — Week 11</div>
+  <h1>Canvas <em>Breach</em></h1>
+  <div class="hero-meta">
+    <div class="hero-meta-item">
+      <span class="val">275M</span>
+      <span class="lbl">Records stolen</span>
+    </div>
+    <div class="hero-meta-item">
+      <span class="val">8,809</span>
+      <span class="lbl">Institutions hit</span>
+    </div>
+    <div class="hero-meta-item">
+      <span class="val">3.65 TB</span>
+      <span class="lbl">Data exfiltrated</span>
+    </div>
+    <div class="hero-meta-item">
+      <span class="val">50</span>
+      <span class="lbl">Countries impacted</span>
+    </div>
+    <div class="hero-meta-item">
+      <span class="val">~$10M</span>
+      <span class="lbl">Ransom paid</span>
+    </div>
+  </div>
+  <span class="hero-scroll">Scroll to read</span>
+</section>
+
+<!-- NAV -->
+<nav>
+  <a href="#summary">Summary</a>
+  <a href="#timeline">Timeline</a>
+  <a href="#vector">Attack Vector</a>
+  <a href="#frameworks">Frameworks</a>
+  <a href="#impact">Impact</a>
+  <a href="#remediation">Remediation</a>
+  <a href="#ethics">Ethics</a>
+  <a href="#exit">Exit Ticket</a>
+  <a href="#reflection">Reflection</a>
+  <a href="#sources">Sources</a>
+</nav>
+
+<!-- SUMMARY -->
+<div id="summary" class="section reveal">
+  <div class="eyebrow">01 — Executive Summary</div>
+  <h2>The largest educational<br>data breach on record</h2>
+  <p style="max-width:700px;">In early May 2026, Instructure — maker of Canvas LMS, the platform used by 41% of U.S. higher education institutions — suffered a two-stage cyberattack executed by ShinyHunters, a criminal group known for extortion-as-a-service operations. Attackers exploited a vulnerability in Canvas's Free-For-Teacher (FFT) account environment to breach production systems shared with verified enterprise tenants, exfiltrating 3.65 terabytes of user data. When Instructure initially refused to negotiate, ShinyHunters struck again — defacing Canvas login portals across thousands of schools with a ransomware message and a May 12 deadline. Instructure ultimately paid an undisclosed ransom (reportedly ~$10 million) to recover the data.</p>
+</div>
+
+<!-- TIMELINE -->
+<div id="timeline" class="section-full reveal">
+  <div style="max-width:1200px; margin: 0 auto;">
+    <div class="eyebrow">02 — Incident Timeline</div>
+    <h2>How it unfolded</h2>
+    <div class="timeline" style="margin-top:2rem; max-width: 720px;">
+      <div class="tl-date">Apr 29–30<br>2026</div>
+      <div class="tl-body">
+        <strong>Initial breach detected</strong>
+        <p>Instructure discovers unauthorized access. Revokes credentials, engages CrowdStrike as forensic partner. Attackers exploit FFT account vulnerability to access production data and begin exfiltrating user records.</p>
+      </div>
+
+      <div class="tl-date">May 1–5</div>
+      <div class="tl-body warn">
+        <strong>Disclosure & ransom demand</strong>
+        <p>Instructure discloses the initial incident publicly. Institution notifications begin May 5. ShinyHunters contacts Instructure with ransom demands — Instructure does not engage. Attackers grow impatient.</p>
+      </div>
+
+      <div class="tl-date">May 7<br>~1:20 PM PDT</div>
+      <div class="tl-body">
+        <strong>Second attack — mass defacement</strong>
+        <p>ShinyHunters exploits XSS vulnerabilities to hijack admin sessions and deface Canvas login portals with a ransom message. Students posting screenshots on Reddit bring the breach to national attention. Instructure takes Canvas offline.</p>
+      </div>
+
+      <div class="tl-date">May 8</div>
+      <div class="tl-body warn">
+        <strong>Partial restoration</strong>
+        <p>Canvas restored to most users. Instructure's status page shows no incidents — contradicting visible outages. FFT program shut down entirely. Australian, Canadian, and Dutch institutions disconnect Canvas as a precaution.</p>
+      </div>
+
+      <div class="tl-date">May 11–13</div>
+      <div class="tl-body ok">
+        <strong>Ransom paid, lawsuit filed</strong>
+        <p>Instructure apologizes for lack of transparency and announces an agreement with ShinyHunters, receiving digital shred logs as confirmation of data destruction. A class action lawsuit is filed in San Diego Federal Court on May 13.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ATTACK VECTOR -->
+<div id="vector" class="section reveal">
+  <div class="eyebrow">03 — Attack Vector</div>
+  <h2>What was exploited</h2>
+  <div class="vector-layout">
+    <div>
+      <p>The root cause was a <strong style="color: var(--text);">trust boundary failure</strong> in Instructure's multi-tenant SaaS architecture. Free-For-Teacher accounts allow educators to create Canvas tenants without institutional verification — a low-friction onboarding path running on the <em>same underlying infrastructure</em> as paid enterprise tenants.</p>
+      <p>Logical isolation between tiers was insufficient. Once an FFT account was weaponized, attackers could traverse tenant boundaries and access production institutional data. The second attack leveraged multiple cross-site scripting (XSS) vulnerabilities to hijack authenticated admin sessions and inject attacker-controlled content into login portals.</p>
+    </div>
+    <div>
+      <div class="attack-chain">
+        <div class="chain-step">
+          <div class="chain-n">01</div>
+          <div class="chain-text">
+            <strong>FFT account created</strong>
+            <span>No institutional verification required. Low-friction onboarding creates unverified tenant on shared infrastructure.</span>
+          </div>
+        </div>
+        <div class="chain-step">
+          <div class="chain-n">02</div>
+          <div class="chain-text">
+            <strong>Tenant boundary traversal</strong>
+            <span>Logical isolation model fails. Attacker gains read access to enterprise tenant data across the platform.</span>
+          </div>
+        </div>
+        <div class="chain-step">
+          <div class="chain-n">03</div>
+          <div class="chain-text">
+            <strong>Mass data exfiltration</strong>
+            <span>3.65 TB of usernames, emails, student IDs, course data, and private messages exfiltrated.</span>
+          </div>
+        </div>
+        <div class="chain-step">
+          <div class="chain-n">04</div>
+          <div class="chain-text">
+            <strong>XSS → admin session hijack</strong>
+            <span>Second attack exploits XSS vulns to inject malicious script, stealing admin sessions and defacing login portals.</span>
+          </div>
+        </div>
+        <div class="chain-step">
+          <div class="chain-n">05</div>
+          <div class="chain-text">
+            <strong>Extortion & ransom payment</strong>
+            <span>ShinyHunters threatens public release. Instructure negotiates and pays ~$10M; data reportedly destroyed.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FRAMEWORKS -->
+<div id="frameworks" class="section-full reveal">
+  <div style="max-width:1200px; margin: 0 auto;">
+    <div class="eyebrow">04 — Framework Classification</div>
+    <h2>Mapping the breach</h2>
+    <div class="fw-grid" style="margin-top:1.5rem;">
+      <div class="fw-card">
+        <div class="fw-tag tag-red">OWASP A01:2021</div>
+        <h3>Broken Access Control</h3>
+        <p>The FFT vulnerability allowed users in an unverified, low-privilege tenant to access data belonging to verified institutional tenants. The isolation model failed: users acted outside their intended permission scope across tenant boundaries — a textbook A01 failure.</p>
+      </div>
+      <div class="fw-card">
+        <div class="fw-tag tag-red">OWASP A03:2021</div>
+        <h3>Injection (XSS)</h3>
+        <p>The second-stage attack leveraged cross-site scripting vulnerabilities confirmed by Instructure and BleepingComputer. Injected scripts enabled session hijacking of admin accounts and unauthorized modification of pages displayed to millions of users.</p>
+      </div>
+      <div class="fw-card">
+        <div class="fw-tag tag-amber">MITRE T1190</div>
+        <h3>Exploit Public-Facing Application</h3>
+        <p>ShinyHunters exploited the FFT account system — a public-facing onboarding path — to gain their initial foothold into Instructure's production environment.</p>
+      </div>
+      <div class="fw-card">
+        <div class="fw-tag tag-amber">MITRE T1567 / T1491</div>
+        <h3>Exfiltration + Defacement</h3>
+        <p>T1567 (Exfiltration over Web Service): 3.65 TB stolen from Canvas systems. T1491.001 (Internal Defacement): login portals modified across thousands of schools to amplify public pressure and coerce ransom payment.</p>
+      </div>
+      <div class="fw-card">
+        <div class="fw-tag tag-blue">CVE Status</div>
+        <h3>No CVE assigned (as of May 15)</h3>
+        <p>Instructure has not disclosed the precise technical mechanism. A proper CVE entry should include: affected product/version, vulnerability type (multi-tenant broken access control), CVSS score (estimated Critical, 9.0+), and remediation status. The XSS vulnerabilities also lack assigned identifiers.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IMPACT -->
+<div id="impact" class="section-full reveal">
+  <div style="max-width:1200px; margin: 0 auto;">
+    <div class="eyebrow">05 — Impact Analysis</div>
+    <h2>Three layers of damage</h2>
+    <div class="impact-grid" style="margin-top:1.5rem;">
+      <div class="impact-card">
+        <span class="impact-icon">⬡</span>
+        <h3>Technical</h3>
+        <p>Usernames, email addresses, student ID numbers, course enrollment data, and private messages were exfiltrated. Core learning data — submissions, grades, credentials — was not compromised. CrowdStrike found no evidence of lateral movement from Canvas to other Instructure products (Parchment unaffected). XSS vulnerabilities gave attackers authenticated admin sessions during the second wave.</p>
+      </div>
+      <div class="impact-card">
+        <span class="impact-icon">◫</span>
+        <h3>Institutional</h3>
+        <p>8,809 institutions across 50 countries affected — including 8 Ivy League universities, K–12 districts, and teaching hospitals. Australia, Canada, and the Netherlands took Canvas offline. The breach occurred during final exam season, disrupting end-of-semester assignments for tens of millions of students. A class action lawsuit was filed May 13, creating lasting legal exposure for adopting institutions.</p>
+      </div>
+      <div class="impact-card">
+        <span class="impact-icon">◯</span>
+        <h3>Human & Privacy</h3>
+        <p>Private messages including medical accommodation requests and sensitive advisor conversations were stolen. These are FERPA-protected educational records. Students and staff now face highly targeted spear-phishing campaigns built from real institutional context — actual course names, advisor relationships, and personal disclosures. Credential overlap between Canvas and institutional accounts amplifies identity risk for hundreds of millions of individuals.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REMEDIATION -->
+<div id="remediation" class="section-full reveal">
+  <div style="max-width:1200px; margin: 0 auto;">
+    <div class="eyebrow">06 — Remediation</div>
+    <h2>What needs to change</h2>
+    <div class="rem-list" style="margin-top:1.5rem;">
+      <div class="rem-item">
+        <div class="rem-num-col">01</div>
+        <div class="rem-body">
+          <div class="rem-badge badge-long">Long-term · Architecture</div>
+          <h3>Enforce physical or cryptographic tenant isolation</h3>
+          <p>The root vulnerability was logical isolation failing on shared infrastructure. Migrate unverified FFT tenants to a physically separate infrastructure tier — separate database clusters, separate API gateways. Alternatively, enforce tenant-specific encryption keys so even a privilege escalation cannot yield cross-tenant readable data. This is the only reliable fix for the core architectural flaw.</p>
+        </div>
+      </div>
+      <div class="rem-item">
+        <div class="rem-num-col">02</div>
+        <div class="rem-body">
+          <div class="rem-badge badge-short">Short-term · Access Control</div>
+          <h3>Gate FFT accounts with institutional email domain verification</h3>
+          <p>Require Free-For-Teacher accounts to verify against a registry of known educational institutions (e.g., .edu domains, Education Department registries) before provisioning a live tenant. Enforce MFA on all FFT accounts and rate-limit their API access to prevent cross-tenant reconnaissance. This directly raises the cost of the initial access vector used in this breach.</p>
+        </div>
+      </div>
+      <div class="rem-item">
+        <div class="rem-num-col">03</div>
+        <div class="rem-body">
+          <div class="rem-badge badge-short">Short-term · Defense in Depth</div>
+          <h3>Deploy a WAF with OWASP rules and enforce Content Security Policy headers</h3>
+          <p>A properly configured WAF (e.g., AWS WAF, Cloudflare) with OWASP managed rule sets would have detected and blocked the XSS payloads before they reached admin sessions. More importantly, deploying strict Content Security Policy (CSP) headers on Canvas login and admin pages blocks execution of inline scripts even if an XSS payload is injected — a no-architecture-change defense that would have prevented the defacement entirely.</p>
+        </div>
+      </div>
+      <div class="rem-item">
+        <div class="rem-num-col">04</div>
+        <div class="rem-body">
+          <div class="rem-badge badge-long">Long-term · Incident Response</div>
+          <h3>Establish a ransomware non-payment policy with a tested IR playbook</h3>
+          <p>Instructure's ransom payment set a dangerous precedent, incentivizing future attacks against education platforms. A formal incident response playbook — encrypted offline backups, tested restoration procedures, predefined communication cadences, and a no-ransom policy aligned with CISA guidance — would give any organization the leverage to refuse payment. Tabletop exercises simulating data extortion before an incident are essential.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ETHICS -->
+<div id="ethics" class="section reveal">
+  <div class="eyebrow">07 — Ethics & FERPA</div>
+  <h2>The human layer<br>matters most</h2>
+  <div class="ethics-callout">
+    <p>The data stolen in this breach — private messages, student IDs, enrollment data — constitutes educational records protected under FERPA (Family Educational Rights and Privacy Act). School districts and universities have an affirmative obligation to notify affected students and families, document what was breached and when, and cooperate with any Department of Education inquiry.</p>
+    <p style="margin-top:1rem;">Instructure's inconsistent status page communications and delayed acknowledgment likely violated the spirit of those obligations. Students are owed clear disclosure of what data was exposed, what risks they face (especially targeted phishing), and what remediation — such as credit monitoring or identity protection services — is being provided at institutional expense. The ransom payment, while understandable under pressure, signals to threat actors that education platforms are profitable targets and effectively funds the next attack.</p>
+  </div>
+</div>
+
+<!-- EXIT TICKET -->
+<div id="exit" class="section-full reveal">
+  <div style="max-width:1200px; margin: 0 auto;">
+    <div class="eyebrow">08 — Exit Ticket</div>
+    <h2>Three answers</h2>
+    <div class="exit-grid" style="margin-top:1.5rem;">
+      <div class="exit-card">
+        <div class="exit-q">Q1 — OWASP Category</div>
+        <p>OWASP A01:2021 — Broken Access Control. The FFT vulnerability allowed a low-trust, unverified tenant account to cross tenant boundaries and access enterprise institutional data. The isolation model failed: users acted outside their intended permission scope across tenant lines — the defining characteristic of A01.</p>
+      </div>
+      <div class="exit-card">
+        <div class="exit-q">Q2 — Right vs. Should Have Been Faster</div>
+        <p>Canvas did right in engaging CrowdStrike immediately and ultimately confirming data destruction via shred logs. They should have been faster at institution-specific notifications — affected organizations were not notified until May 5, nearly a week after the breach was detected, eliminating their ability to take early protective action for students and staff.</p>
+      </div>
+      <div class="exit-card">
+        <div class="exit-q">Q3 — First Action as IT Security Lead</div>
+        <p>Force-rotate all Canvas API integration credentials and OAuth tokens district-wide, then issue an immediate advisory to all staff and students warning of targeted phishing. The stolen PII — real names, course names, advisor relationships — enables highly convincing spear-phishing campaigns in the days and weeks following the breach, so this communication must happen before the phishing wave arrives.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REFLECTION -->
+<div id="reflection" class="section reveal">
+  <div class="eyebrow">09 — Reflection</div>
+  <h2>What I would have done<br>differently</h2>
+  <div class="reflection-box">
+    <p>If I had been on Canvas's security team, the single biggest change would have been earlier and more aggressive communication — both internally and to affected institutions. The inconsistency between what appeared on the status page and what was actually happening eroded trust at the exact moment institutions needed guidance to protect their communities. Technically, the architectural risk of co-locating unverified FFT tenants with enterprise institutional data on shared infrastructure was a foreseeable flaw; I would have required a formal security review of any new account tier before launch, specifically stress-testing the cross-tenant isolation model. The ransom payment, while understandable under immense pressure, was the wrong call — it funded future attacks and signaled that education platforms are profitable targets. A pre-established IR playbook with offline backups and legal counsel briefed in advance would have provided the leverage to refuse.</p>
+  </div>
+</div>
+
+<!-- SOURCES -->
+<div id="sources" class="section reveal">
+  <div class="eyebrow">10 — Sources</div>
+  <h2>References</h2>
+  <ul class="sources-list">
+    <li><a href="https://en.wikipedia.org/wiki/2026_Canvas_security_incident" target="_blank">Wikipedia — "2026 Canvas security incident"</a></li>
+    <li><a href="https://www.instructure.com/incident_update" target="_blank">Instructure — Official Security Incident FAQ & Update</a></li>
+    <li><a href="https://www.bleepingcomputer.com/news/security/instructure-confirms-hackers-used-canvas-flaw-to-deface-portals/" target="_blank">BleepingComputer — "Instructure confirms hackers used Canvas flaw to deface portals"</a></li>
+    <li><a href="https://www.insidehighered.com/news/tech-innovation/administrative-tech/2026/05/11/instructure-pays-ransom-canvas-hackers" target="_blank">Inside Higher Ed — "Instructure Pays Ransom to Canvas Hackers"</a></li>
+    <li><a href="https://www.rescana.com/post/shinyhunters-launches-second-major-attack-on-instructure-canvas-lms-via-free-for-teacher-accounts-may-2026-breach-analys/" target="_blank">Rescana — ShinyHunters: May 2026 Breach Analysis and Mitigation</a></li>
+    <li><a href="https://www.trendmicro.com/en_us/research/26/e/What-Is-the-Instructure-Canvas-Breach.html" target="_blank">Trend Micro — "What Is the Instructure Canvas Breach?"</a></li>
+  </ul>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span>Canvas LMS Breach — Security Brief · Week 11 · Ethical Hacking</span>
+  <span>Prepared May 2026 · All sources publicly available</span>
+</footer>
+
+<script>
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  reveals.forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
